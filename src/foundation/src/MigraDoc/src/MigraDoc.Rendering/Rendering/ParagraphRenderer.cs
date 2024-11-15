@@ -10,6 +10,7 @@ using PdfSharp.Drawing;
 using MigraDoc.DocumentObjectModel.Fields;
 using MigraDoc.DocumentObjectModel.Shapes;
 using MigraDoc.Rendering.Extensions;
+using MigraDoc.DocumentObjectModel.Visitors;
 
 namespace MigraDoc.Rendering
 {
@@ -109,6 +110,7 @@ namespace MigraDoc.Rendering
                 DocumentRenderer.AddOutline((int)_paragraph.Format.OutlineLevel, GetOutlineTitle(), _gfx.PdfPage, GetDestinationPosition());
 
             RenderShading();
+            RenderFormattedTextShading();
             RenderBorders();
 
             ParagraphFormatInfo parFormatInfo = (ParagraphFormatInfo)_renderInfo.FormatInfo;
@@ -121,7 +123,7 @@ namespace MigraDoc.Rendering
                 if (lineInfo.ReMeasureLine)
                     ReMeasureLine(ref lineInfo);
 
-                RenderLine(lineInfo);
+                RenderLine(lineInfo, _paragraph.Elements);
             }
         }
 
@@ -547,7 +549,7 @@ namespace MigraDoc.Rendering
                     }
 
                     if (decimalPosIndex >= 0)
-                        word = word[..decimalPosIndex];
+                        word = word.Substring(0, decimalPosIndex);
 
                     XUnitPt wordLength = MeasureString(word);
                     notFitting = _currentXPosition + wordLength >= _formattingArea.X + _formattingArea.Width + Tolerance;
@@ -721,7 +723,7 @@ namespace MigraDoc.Rendering
         /// Renders a single line.
         /// </summary>
         /// <param name="lineInfo"></param>
-        void RenderLine(LineInfo lineInfo)
+        void RenderLine(LineInfo lineInfo, ParagraphElements paragraph)
         {
             _currentVerticalInfo = lineInfo.Vertical;
             _currentLeaf = lineInfo.StartIter;
@@ -740,6 +742,29 @@ namespace MigraDoc.Rendering
             bool ready = _currentLeaf == null;
             if (_isFirstLine)
                 RenderListSymbol();
+
+            var formattedText = paragraph.Where(x => x is FormattedText);
+
+            //FormattedText? formattedText = _currentLeaf != null ? _currentLeaf?.Current as FormattedText : null;
+
+            //if (formattedText.Any())
+            //{
+            //    // Si tiene un color de fondo que no es transparente
+            //    if (formattedText.BackgroundColor != Colors.Transparent)
+            //    {
+            //        // Dibujar el fondo detrás del texto
+            //        XRect backgroundRect = new XRect(
+            //            _currentXPosition,
+            //            _currentYPosition,
+            //            _currentLineWidth,
+            //            lineInfo.Vertical.Height
+            //        );
+            //        _gfx.DrawRectangle(
+            //            new XSolidBrush(XColor.FromArgb(formattedText.BackgroundColor.Argb)),
+            //            backgroundRect
+            //        );
+            //    }
+            //}
 
             while (!ready)
             {
@@ -762,6 +787,33 @@ namespace MigraDoc.Rendering
             _currentYPosition += lineInfo.Vertical.Height;
             _isFirstLine = false;
         }
+
+        //void RenderBackground(LineInfo lineInfo, ParagraphElements paragraph)
+        //{
+        //    var formattedParagraph = paragraph.Where(x => x is FormattedText);
+
+        //    //FormattedText? formattedText = _currentLeaf != null ? _currentLeaf?.Current as FormattedText : null;
+
+        //    if (formattedParagraph.Count() > 0) 
+        //    {
+        //        foreach (FormattedText item in formattedParagraph)
+        //        {
+        //            if (item.BackgroundColor != Colors.Transparent)
+        //            {
+        //                var backgroundRect = new XRect(_currentXPosition, _currentYPosition, _currentLineWidth, lineInfo.Vertical.Height);
+
+        //                _gfx.DrawRectangle(new XSolidBrush(XColor.FromArgb(item.BackgroundColor.Argb)), backgroundRect);
+        //            }
+        //        }
+        //    }
+
+            //if (formattedText != null && formattedText.BackgroundColor != Colors.Transparent)
+            //{
+            //    XRect backgroundRect = new XRect(_currentXPosition, _currentYPosition, _currentLineWidth, lineInfo.Vertical.Height);
+
+            //    _gfx.DrawRectangle(new XSolidBrush(XColor.FromArgb(formattedText.BackgroundColor.Argb)), backgroundRect);
+            //}
+        //}
 
         void ReMeasureLine(ref LineInfo lineInfo)
         {
@@ -1905,6 +1957,36 @@ namespace MigraDoc.Rendering
             return new Rectangle(left, top, right - left, bottom - top);
         }
 
+        Area GetFormattedTextShadingArea(FormattedText _formatedText)
+        {
+            var contentArea = _renderInfo.LayoutInfo.ContentArea;
+            var format = _formatedText.GetFormat();
+            XUnitPt left = contentArea.X;
+            left += format.LeftIndent.Point;
+            if (format.FirstLineIndent < 0)
+                left += format.FirstLineIndent.Point;
+
+            XUnitPt top = contentArea.Y;
+            XUnitPt bottom = contentArea.Y + contentArea.Height;
+            XUnitPt right = contentArea.X + contentArea.Width;
+            right -= format.RightIndent.Point;
+
+            if (format.Values.Borders is not null && !format.Values.Borders.IsNull())
+            {
+                Borders borders = format.Borders;
+                var bordersRenderer = new BordersRenderer(borders, _gfx);
+
+                if (_renderInfo.FormatInfo.IsStarting)
+                    top += bordersRenderer.GetWidth(BorderType.Top);
+                if (_renderInfo.FormatInfo.IsEnding)
+                    bottom -= bordersRenderer.GetWidth(BorderType.Bottom);
+
+                left -= borders.DistanceFromLeft.Point;
+                right += borders.DistanceFromRight.Point;
+            }
+            return new Rectangle(left, top, right - left, bottom - top);
+        }
+
         void RenderShading()
         {
             if (_paragraph.Format.Values.Shading is null || _paragraph.Format.Values.Shading.IsNull())
@@ -1914,6 +1996,25 @@ namespace MigraDoc.Rendering
             var area = GetShadingArea();
 
             shadingRenderer.Render(area.X, area.Y, area.Width, area.Height);
+        }
+
+        void RenderFormattedTextShading()
+        {
+            foreach (var element in _paragraph.Elements)
+            {
+                if (element != null && element is FormattedText) 
+                {
+                    var formattedText = element as FormattedText;
+                    // Si tiene un color de fondo que no es transparente
+                    if (formattedText is FormattedText && formattedText.BackgroundColor != null)
+                    {
+                        var shadingRenderer = new ShadingRenderer(_gfx, formattedText.BackgroundColor);
+                        var area = GetFormattedTextShadingArea(formattedText);
+
+                        shadingRenderer.Render(area.X, area.Y, area.Width, area.Height);
+                    }
+                }
+            }
         }
 
         void RenderBorders()

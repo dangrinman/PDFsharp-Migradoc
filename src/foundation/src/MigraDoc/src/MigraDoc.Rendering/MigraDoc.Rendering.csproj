@@ -30,12 +30,15 @@
   <ItemGroup>
     <Compile Remove="Rendering.Forms\**" />
     <Compile Remove="Rendering.Printing\**" />
+    <Compile Remove="Rendering.UnitTest\**" />
     <Compile Remove="Rendering.Windows\**" />
     <EmbeddedResource Remove="Rendering.Forms\**" />
     <EmbeddedResource Remove="Rendering.Printing\**" />
+    <EmbeddedResource Remove="Rendering.UnitTest\**" />
     <EmbeddedResource Remove="Rendering.Windows\**" />
     <None Remove="Rendering.Forms\**" />
     <None Remove="Rendering.Printing\**" />
+    <None Remove="Rendering.UnitTest\**" />
     <None Remove="Rendering.Windows\**" />
   </ItemGroup>
 

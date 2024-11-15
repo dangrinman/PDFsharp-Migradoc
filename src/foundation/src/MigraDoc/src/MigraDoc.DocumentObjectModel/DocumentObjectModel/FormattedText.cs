@@ -12,12 +12,22 @@ namespace MigraDoc.DocumentObjectModel
     /// </summary>
     public class FormattedText : DocumentObject, IVisitable
     {
+        public Shading BackgroundColor
+        {
+            get => Values.BackgroundColor ??= new Shading(this);
+            set
+            {
+                SetParent(value);
+                Values.BackgroundColor = value;
+            }
+        }
         /// <summary>
         /// Initializes a new instance of the FormattedText class.
         /// </summary>
         public FormattedText()
         {
             BaseValues = new FormattedTextValues(this);
+            BackgroundColor.Color = Colors.Transparent;
         }
 
         /// <summary>
@@ -26,6 +36,7 @@ namespace MigraDoc.DocumentObjectModel
         internal FormattedText(DocumentObject parent) : base(parent)
         {
             BaseValues = new FormattedTextValues(this);
+            BackgroundColor.Color = Colors.Transparent;
         }
 
         /// <summary>
@@ -566,6 +577,12 @@ namespace MigraDoc.DocumentObjectModel
             /// See enclosing document object class for documentation of this property.
             /// </summary>
             public Font? Font { get; set; }
+
+            /// <summary>
+            /// Gets or sets the internal nullable implementation value of the enclosing document object property.
+            /// See enclosing document object class for documentation of this property.
+            /// </summary>
+            public Shading? BackgroundColor { get; set; }
 
             /// <summary>
             /// Gets or sets the internal nullable implementation value of the enclosing document object property.

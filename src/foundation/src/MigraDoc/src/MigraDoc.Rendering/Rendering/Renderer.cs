@@ -172,7 +172,6 @@ namespace MigraDoc.Rendering
             //  renderer = new ChartRenderer(gfx, renderInfo, fieldInfos);
             else if (renderInfo.DocumentObject is Image)
                 renderer = new ImageRenderer(gfx, renderInfo, fieldInfos);
-
             if (renderer != null)
                 renderer._documentRenderer = documentRenderer;
 

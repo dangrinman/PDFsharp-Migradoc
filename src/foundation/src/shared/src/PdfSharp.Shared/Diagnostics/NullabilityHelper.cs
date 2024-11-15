@@ -9,7 +9,7 @@ namespace PdfSharp.Diagnostics
     /// Helper class for code migration to nullable reference types.
     /// </summary>
     // ReSharper disable once InconsistentNaming
-    static class NRT
+    static public class NRT
     {
         /// <summary>
         /// Throws an InvalidOperationException because an expression which must not be null is null.
